@@ -4,171 +4,183 @@
 <head>
     <style>
         body {
-    margin: 0;
-    padding: 0;
-    background: linear-gradient(135deg, #1e1e2f, #121212);
-    color: #fff;
-    font-family: Arial, sans-serif;
-}
+            margin: 0;
+            padding: 0;
+            background: #000;
+            font-family: Arial, sans-serif;
+        }
 
-#messages {
-    position: fixed;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: calc(100% - 60px);
-    background: rgba(0, 0, 0, 0.7);
-    overflow-y: auto;
-    padding: 10px;
-    box-sizing: border-box;
-}
+        #messages {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: calc(100% - 50px);
+            background: #000;
+            overflow-y: auto;
+            padding: 10px;
+            box-sizing: border-box;
+            color: white;
+            display: flex;
+            flex-direction: column;
+        }
 
-#sendMsg {
-    position: fixed;
-    left: 0;
-    bottom: 0;
-    width: 100%;
-    height: 60px;
-    background: #222;
-    display: flex;
-    align-items: center;
-    padding: 5px;
-}
+        #sendMsg {
+            position: fixed;
+            left: 0;
+            bottom: 0;
+            width: 100%;
+            height: 50px;
+            background: #333;
+            display: flex;
+            align-items: center;
+            padding: 5px;
+        }
 
-#msgTxt {
-    flex: 1;
-    height: 100%;
-    padding: 10px;
-    border: none;
-    border-radius: 10px;
-    font-size: 16px;
-    outline: none;
-    background: #333;
-    color: #fff;
-}
+        #msgTxt {
+            flex: 1;
+            height: 100%;
+            padding-left: 10px;
+            box-sizing: border-box;
+            border: none;
+            font-size: 16px;
+        }
 
-#msgBtn {
-    width: 100px;
-    height: 100%;
-    border: none;
-    background: #6200ea;
-    color: #fff;
-    font-size: 16px;
-    cursor: pointer;
-    border-radius: 10px;
-    margin-left: 5px;
-}
+        #msgBtn {
+            width: 100px;
+            height: 100%;
+            background: #8800FF;
+            color: white;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+        }
 
-#msgBtn:hover {
-    background: #7c4dff;
-}
+        .outer {
+            width: 100%;
+            margin-top: 10px;
+            display: flex;
+        }
 
-.outer {
-    width: 100%;
-    margin-top: 10px;
-    display: flex;
-}
+        #inner {
+            padding: 10px;
+            box-sizing: border-box;
+            border-radius: 10px;
+        }
 
-#inner {
-    padding: 10px;
-    box-sizing: border-box;
-    border-radius: 10px;
-    max-width: 80%;
-}
+        .me {
+            background: #8800FF;
+            color: #fff;
+            align-self: flex-end;
+        }
 
-.me {
-    background: #bb86fc;
-    color: #fff;
-    align-self: flex-end;
-}
-
-.notMe {
-    background: #2c2c2c;
-    color: #fff;
-    align-self: flex-start;
-}
-
+        .notMe {
+            background: #FFF;
+            color: #000;
+            align-self: flex-start;
+        }
     </style>
 </head>
 
 <body>
+
     <div id="messages"></div>
 
     <div id="sendMsg">
-        <input type="text" id="msgTxt" placeholder="ENTER YOUR MSG...">
-        <input type="submit" id="msgBtn" value="send" onclick="module.sendMsg()">
+        <input type="text" id="msgTxt" placeholder="ENTER YOUR MSG..." onkeypress="handleKeyPress(event)">
+        <input type="submit" id="msgBtn" value="SEND" onclick="module.sendMsg()">
     </div>
 
     <script>
         module = {};
     </script>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
         import { getDatabase, ref, set, remove, onChildAdded, onChildRemoved } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-database.js";
 
-   
+        // Firebase Config
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID",
+            measurementId: "YOUR_MEASUREMENT_ID"
+        };
 
-const firebaseConfig = {
-    apiKey: "AIzaSyCZkQS2VfLi6fs0bxJD1RcpC9qjXtIkg1k",
-    authDomain: "realtimechat-4eea0.firebaseapp.com",
-    projectId: "realtimechat-4eea0",
-    storageBucket: "realtimechat-4eea0.firebasestorage.app",
-    messagingSenderId: "861958764680",
-    appId: "1:861958764680:web:ad353789aa8ab69b48473d",
-    measurementId: "G-RW02QF50D7"
-};
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        // variables
-        var msgTxt = document.getElementById('msgTxt');
+        // Get user details
         var sender;
-        if(sessionStorage.getItem('sender')){
+        if (sessionStorage.getItem('sender')) {
             sender = sessionStorage.getItem('sender');
         } else {
             sender = prompt('PLEASE ENTER YOUR NAME');
-            sessionStorage.setItem('sender',sender);
+            sessionStorage.setItem('sender', sender);
         }
 
-        // TO SEND MESSAGES
-        module.sendMsg = function sendMsg(){
-            var msg = msgTxt.value;
+        var messagesDiv = document.getElementById("messages");
+
+        // Send message
+        module.sendMsg = function sendMsg() {
+            var msg = document.getElementById('msgTxt').value;
+            if (msg.trim() === "") return; // Prevent sending empty messages
+
             var timestamp = new Date().getTime();
-            set(ref(db,"messages/"+timestamp),{
-                msg : msg,
-                sender : sender
-            })
+            set(ref(db, "messages/" + timestamp), {
+                msg: msg,
+                sender: sender
+            });
 
-            msgTxt.value="";
+            document.getElementById('msgTxt').value = "";
+        };
+
+        // Auto-scroll to bottom
+        function scrollToBottom() {
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
-        msgTxt.addEventListener("keypress", function (event) {
-    if (event.key === "Enter") {
-        event.preventDefault(); // Prevents default form submission behavior
-        module.sendMsg();
-    }
-});
 
-
-        // TO RECEIVE MSG
-        onChildAdded(ref(db,"messages"), (data)=>{
-            if(data.val().sender == sender){
-                messages.innerHTML += "<div style=justify-content:end class=outer id="+data.key+"><div id=inner class=me>you : "+data.val().msg+"<button id=dltMsg onclick=module.dltMsg("+data.key+")>DELETE</button></div></div>";
+        // Listen for new messages
+        onChildAdded(ref(db, "messages"), (data) => {
+            if (data.val().sender == sender) {
+                messagesDiv.innerHTML += `
+                    <div style="justify-content:end" class="outer" id="${data.key}">
+                        <div id="inner" class="me">You: ${data.val().msg}
+                            <button id="dltMsg" onclick="module.dltMsg(${data.key})">DELETE</button>
+                        </div>
+                    </div>`;
             } else {
-                messages.innerHTML += "<div class=outer id="+data.key+"><div id=inner class=notMe>"+data.val().sender+" : "+data.val().msg+"</div></div>";
+                messagesDiv.innerHTML += `
+                    <div class="outer" id="${data.key}">
+                        <div id="inner" class="notMe">${data.val().sender}: ${data.val().msg}</div>
+                    </div>`;
             }
-        })
 
-        // TO DELETE MSG
-        module.dltMsg = function dltMsg(key){
-            remove(ref(db,"messages/"+key));
-        }
+            scrollToBottom();
+        });
 
-        // WHEN MSG IS DELETED
-        onChildRemoved(ref(db,"messages"),(data)=>{
+        // Delete message
+        module.dltMsg = function dltMsg(key) {
+            remove(ref(db, "messages/" + key));
+        };
+
+        // Remove message from UI when deleted
+        onChildRemoved(ref(db, "messages"), (data) => {
             var msgBox = document.getElementById(data.key);
-            messages.removeChild(msgBox);
-        })
+            messagesDiv.removeChild(msgBox);
+        });
+
+        // Handle Enter key press
+        function handleKeyPress(event) {
+            if (event.key === "Enter") {
+                module.sendMsg();
+            }
+        }
     </script>
+
 </body>
 
 </html>
