@@ -95,95 +95,109 @@
         module = {};
     </script>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
-        import { getDatabase, ref, set, remove, onChildAdded, onChildRemoved } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-database.js";
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
+    import { getDatabase, ref, set, remove, onChildAdded, onChildRemoved } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-database.js";
 
-        // Firebase Config
-        
-            const firebaseConfig = {
-                apiKey: "AIzaSyCZkQS2VfLi6fs0bxJD1RcpC9qjXtIkg1k",
-                authDomain: "realtimechat-4eea0.firebaseapp.com",
-                projectId: "realtimechat-4eea0",
-                storageBucket: "realtimechat-4eea0.firebasestorage.app",
-                messagingSenderId: "861958764680",
-                appId: "1:861958764680:web:ad353789aa8ab69b48473d",
-                measurementId: "G-RW02QF50D7"
-            };
+    // Firebase Config
+    const firebaseConfig = {
+        apiKey: "AIzaSyCZkQS2VfLi6fs0bxJD1RcpC9qjXtIkg1k",
+        authDomain: "realtimechat-4eea0.firebaseapp.com",
+        projectId: "realtimechat-4eea0",
+        storageBucket: "realtimechat-4eea0.firebasestorage.app",
+        messagingSenderId: "861958764680",
+        appId: "1:861958764680:web:ad353789aa8ab69b48473d",
+        measurementId: "G-RW02QF50D7"
+    };
 
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
 
-        // Get user details
-        var sender;
-        if (sessionStorage.getItem('sender')) {
-            sender = sessionStorage.getItem('sender');
-        } else {
-            sender = prompt('PLEASE ENTER YOUR NAME');
-            sessionStorage.setItem('sender', sender);
-        }
-
-        var messagesDiv = document.getElementById("messages");
-
-        // Send message
-        module.sendMsg = function sendMsg() {
-            var msg = document.getElementById('msgTxt').value;
-            if (msg.trim() === "") return; // Prevent sending empty messages
-
-            var timestamp = new Date().getTime();
-            set(ref(db, "messages/" + timestamp), {
-                msg: msg,
-                sender: sender
-            });
-
-            document.getElementById('msgTxt').value = "";
-        };
-
-        // Auto-scroll to bottom
-        function scrollToBottom() {
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
-        }
-
-        // Listen for new messages
-        onChildAdded(ref(db, "messages"), (data) => {
-            if (data.val().sender == sender) {
-                messagesDiv.innerHTML += `
-                    <div style="justify-content:end" class="outer" id="${data.key}">
-                        <div id="inner" class="me">You: ${data.val().msg}
-                            <button id="dltMsg" onclick="module.dltMsg(${data.key})">DELETE</button>
-                        </div>
-                    </div>`;
-            } else {
-                messagesDiv.innerHTML += `
-                    <div class="outer" id="${data.key}">
-                        <div id="inner" class="notMe">${data.val().sender}: ${data.val().msg}</div>
-                    </div>`;
-            }
-
-            scrollToBottom();
-        });
-
-        // Delete message
-        module.dltMsg = function dltMsg(key) {
-            remove(ref(db, "messages/" + key));
-        };
-
-        // Remove message from UI when deleted
-        onChildRemoved(ref(db, "messages"), (data) => {
-            var msgBox = document.getElementById(data.key);
-            messagesDiv.removeChild(msgBox);
-        });
-
-        
-msgTxt.addEventListener("keypress", function (event) {
-    if (event.key === "Enter") {
-        event.preventDefault(); // Prevents default form submission behavior
-        module.sendMsg();
+    // Get user details
+    var sender;
+    if (sessionStorage.getItem('sender')) {
+        sender = sessionStorage.getItem('sender');
+    } else {
+        sender = prompt('PLEASE ENTER YOUR NAME');
+        sessionStorage.setItem('sender', sender);
     }
-});
 
+    // Assign a unique color to each user
+    function getUserColor(name) {
+        let colors = ["#FF5733", "#33FF57", "#5733FF", "#FF33A1", "#33FFF5", "#F5FF33", "#FF8C33", "#A133FF"];
+        let hash = 0;
+        for (let i = 0; i < name.length; i++) {
+            hash = name.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        return colors[Math.abs(hash % colors.length)];
+    }
 
-    </script>
+    var userColor = sessionStorage.getItem('userColor') || getUserColor(sender);
+    sessionStorage.setItem('userColor', userColor);
+
+    var messagesDiv = document.getElementById("messages");
+
+    // Send message
+    module.sendMsg = function sendMsg() {
+        var msg = document.getElementById('msgTxt').value;
+        if (msg.trim() === "") return; // Prevent sending empty messages
+
+        var timestamp = new Date().getTime();
+        set(ref(db, "messages/" + timestamp), {
+            msg: msg,
+            sender: sender
+        });
+
+        document.getElementById('msgTxt').value = "";
+    };
+
+    // Auto-scroll to bottom
+    function scrollToBottom() {
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    // Listen for new messages
+    onChildAdded(ref(db, "messages"), (data) => {
+        let senderColor = getUserColor(data.val().sender); // Assign unique color
+
+        if (data.val().sender == sender) {
+            messagesDiv.innerHTML += `
+                <div style="justify-content:end" class="outer" id="${data.key}">
+                    <div id="inner" class="me" style="border: 2px solid ${senderColor};">
+                        <span style="color: ${senderColor}; font-weight: bold;">You</span>: ${data.val().msg}
+                        <button id="dltMsg" onclick="module.dltMsg(${data.key})">DELETE</button>
+                    </div>
+                </div>`;
+        } else {
+            messagesDiv.innerHTML += `
+                <div class="outer" id="${data.key}">
+                    <div id="inner" class="notMe" style="border: 2px solid ${senderColor};">
+                        <span style="color: ${senderColor}; font-weight: bold;">${data.val().sender}</span>: ${data.val().msg}
+                    </div>
+                </div>`;
+        }
+
+        scrollToBottom();
+    });
+
+    // Delete message
+    module.dltMsg = function dltMsg(key) {
+        remove(ref(db, "messages/" + key));
+    };
+
+    // Remove message from UI when deleted
+    onChildRemoved(ref(db, "messages"), (data) => {
+        var msgBox = document.getElementById(data.key);
+        messagesDiv.removeChild(msgBox);
+    });
+
+    msgTxt.addEventListener("keypress", function (event) {
+        if (event.key === "Enter") {
+            event.preventDefault(); // Prevents default form submission behavior
+            module.sendMsg();
+        }
+    });
+</script>
 
 </body>
 
